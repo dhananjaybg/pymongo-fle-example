@@ -11,7 +11,9 @@ from pprint import pprint
 class BuildEncryption:
     def __init__(self, master_file_path):
         self.client = MongoClient("mongodb://localhost:27017")
-        self.key_vault_namespace = "__keyVault.encryption"
+        self.db = 'encryption'
+        self.collection = '__keyVault'
+        self.key_vault_namespace = f"{self.db}.{self.collection}"
         self.master_file_path = master_file_path
 
     def create_master_key(self):
@@ -48,10 +50,11 @@ class BuildEncryption:
 
 
     def test(self, data_key_id):
-        key_vault = self.client[self.key_vault_namespace]
+        key_vault = self.client[self.db][self.collection]
         # Pass in the data_key_id created in previous section
         key = key_vault.find_one({"_id": data_key_id})
         pprint(key)
+
 
 if __name__ == '__main__':
     encrypt = BuildEncryption(master_file_path="key.txt")
