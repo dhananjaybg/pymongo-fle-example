@@ -8,6 +8,8 @@ from bson.binary import STANDARD, UUID
 from collections import OrderedDict
 
 mongo_url = "mongodb://localhost:27017"
+db = "medicalRecords"
+collection = "patients"
 
 
 class BuildEncryption:
@@ -60,10 +62,15 @@ class BuildEncryption:
         print(f'data encryption key: {key} \n')
 
     def create_schema(self, data_key_id):
-        db = self.client.test
-        collection = 'persons'
         user_schema = {
             "ssn": {
+                "encrypt": {
+                    "keyId": [data_key_id],
+                    "algorithm": Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
+                    "bsonType": "string"
+                }
+            },
+            "blood_type": {
                 "encrypt": {
                     "keyId": [data_key_id],
                     "algorithm": Algorithm.AEAD_AES_256_CBC_HMAC_SHA_512_Deterministic,
@@ -81,7 +88,7 @@ class BuildEncryption:
         print(f'validator created: {validator} \n')
 
         query = [('collMod', collection), ('validator', validator)]
-        db.command(OrderedDict(query))
+        self.client[db].command(OrderedDict(query))
         return user_schema
 
 
@@ -96,16 +103,15 @@ class EncryptedConnection:
             **{}
         )
         self.client = MongoClient(mongo_url, auto_encryption_opts=fle_opts)
-        self.collection = self.client['test']['persons']
+        self.collection = self.client[db][collection]
         print(f'encrypted connection initiated. \n')
 
-    def insert(self, name, ssn):
-        user = {
-            'name': name,
-            'ssn': ssn
-        }
-        self.collection.insert_one(user)
-        print(f'user inserted: {user} \n')
+    def insert(self, **kwargs):
+        self.collection.insert_one(kwargs)
+        print(f'user inserted: {kwargs} \n')
+
+    def find(self, **kwargs):
+        return self.collection.find_one(kwargs)
 
 
 if __name__ == '__main__':
@@ -121,7 +127,14 @@ if __name__ == '__main__':
     schema = encrypt.create_schema(data_key_id=data_key_id)
 
     client = EncryptedConnection(kms=kms, schema=schema)
-    client.insert(name="John", ssn="123")
 
-    result = MongoClient(mongo_url)['test']['persons'].find_one({'name': "John"})
-    print(f'result: {result}')
+    patient_object = {
+        "name": "John",
+        "blood_type": "O Negative",
+        "ssn": "123"
+    }
+
+    client.insert(**patient_object)
+
+    result = client.find(ssn=patient_object['ssn'])
+    print(f'thru the wire, encrypted result: {result}')
