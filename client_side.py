@@ -5,7 +5,6 @@ from pymongo.encryption import Algorithm, ClientEncryption
 import base64
 from bson.codec_options import CodecOptions
 from bson.binary import STANDARD, UUID
-from pprint import pprint
 from collections import OrderedDict
 
 mongo_url = "mongodb://localhost:27017"
@@ -24,7 +23,7 @@ class BuildEncryption:
         # create master key
         with open(self.master_file_path, "wb") as f:
             f.write(file_bytes)
-            print(f'master key created: {self.master_file_path}')
+            print(f'master key created: {self.master_file_path} \n')
         # read master key and build KMS dict
         with open(self.master_file_path, "rb") as f:
             local_master_key = f.read()
@@ -34,7 +33,7 @@ class BuildEncryption:
                     "key": local_master_key  # local_master_key variable from the previous step
                 }
             }
-            print(f'KMS provider created using local master key: {kms_providers}')
+            print(f'KMS provider created using local master key: {kms_providers} \n')
 
             return kms_providers
 
@@ -49,7 +48,7 @@ class BuildEncryption:
         )
         data_key_id = client_encryption.create_data_key("local")
         uuid_data_key_id = UUID(bytes=data_key_id)
-        print(f'data key created using KMS provider: {uuid_data_key_id}')
+        print(f'data key created using KMS provider: {uuid_data_key_id} \n')
 
         base_64_data_key_id = base64.b64encode(data_key_id)
         return data_key_id
@@ -58,7 +57,7 @@ class BuildEncryption:
         key_vault = self.client[self.db][self.collection]
         # grab the data encryption key
         key = key_vault.find_one({"_id": data_key_id})
-        print(f'data encryption key: {key}')
+        print(f'data encryption key: {key} \n')
 
     def create_schema(self, data_key_id):
         db = self.client.test
@@ -79,7 +78,7 @@ class BuildEncryption:
                 'properties': user_schema
             }
         }
-        print(f'validator created: {validator}')
+        print(f'validator created: {validator} \n')
 
         query = [('collMod', collection), ('validator', validator)]
         db.command(OrderedDict(query))
@@ -98,6 +97,7 @@ class EncryptedConnection:
         )
         self.client = MongoClient(mongo_url, auto_encryption_opts=fle_opts)
         self.collection = self.client['test']['persons']
+        print(f'encrypted connection initiated. \n')
 
     def insert(self, name, ssn):
         user = {
@@ -105,6 +105,7 @@ class EncryptedConnection:
             'ssn': ssn
         }
         self.collection.insert_one(user)
+        print(f'user inserted: {user} \n')
 
 
 if __name__ == '__main__':
@@ -121,3 +122,6 @@ if __name__ == '__main__':
 
     client = EncryptedConnection(kms=kms, schema=schema)
     client.insert(name="John", ssn="123")
+
+    result = MongoClient(mongo_url)['test']['persons'].find_one({'name': "John"})
+    print(f'result: {result}')
