@@ -24,6 +24,7 @@ class BuildEncryption:
         # create master key
         with open(self.master_file_path, "wb") as f:
             f.write(file_bytes)
+            print(f'master key created: {self.master_file_path}')
         # read master key and build KMS dict
         with open(self.master_file_path, "rb") as f:
             local_master_key = f.read()
@@ -33,6 +34,7 @@ class BuildEncryption:
                     "key": local_master_key  # local_master_key variable from the previous step
                 }
             }
+            print(f'KMS provider created using local master key: {kms_providers}')
 
             return kms_providers
 
@@ -47,6 +49,8 @@ class BuildEncryption:
         )
         data_key_id = client_encryption.create_data_key("local")
         uuid_data_key_id = UUID(bytes=data_key_id)
+        print(f'data key created using KMS provider: {uuid_data_key_id}')
+
         base_64_data_key_id = base64.b64encode(data_key_id)
         return data_key_id
 
@@ -54,7 +58,7 @@ class BuildEncryption:
         key_vault = self.client[self.db][self.collection]
         # grab the data encryption key
         key = key_vault.find_one({"_id": data_key_id})
-        pprint(key)
+        print(f'data encryption key: {key}')
 
     def create_schema(self, data_key_id):
         db = self.client.test
@@ -75,6 +79,7 @@ class BuildEncryption:
                 'properties': user_schema
             }
         }
+        print(f'validator created: {validator}')
 
         query = [('collMod', collection), ('validator', validator)]
         db.command(OrderedDict(query))
