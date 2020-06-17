@@ -120,12 +120,13 @@ if __name__ == '__main__':
     encrypt = BuildEncryption(master_file_path=path)
     # create KMS provider using a randomly generated master key
     kms = encrypt.create_kms_provider()
-    # generate data key and push to mongo
+    # generate data key and push to mongo __keyVault
     data_key_id = encrypt.create_data_encryption_key(kms_providers=kms)
-
+    # test encryption key
     encrypt.test(data_key_id=data_key_id)
+    # create schema validator for individual fields
     schema = encrypt.create_schema(data_key_id=data_key_id)
-
+    # open an encrypted connection with schema
     client = EncryptedConnection(kms=kms, schema=schema)
 
     patient_object = {
